@@ -1,1 +1,55 @@
 
+//======================================================================
+// File: APB_SEQUENCE.sv
+// Description: UVM Sequence for generating APB transactions
+// Author: Kittu K Patel
+//======================================================================
+
+class APB_SEQUENCE extends uvm_sequence #(APB_TRANS);
+
+  //--------------------------------------------------------------------
+  // Factory Registration
+  //--------------------------------------------------------------------
+  `uvm_object_utils(APB_SEQUENCE)
+
+  //--------------------------------------------------------------------
+  // Data Members
+  //--------------------------------------------------------------------
+  APB_TRANS trans;   // Transaction handle
+
+  //--------------------------------------------------------------------
+  // Constructor
+  //--------------------------------------------------------------------
+  function new(string name = "APB_SEQUENCE");
+    super.new(name);
+  endfunction
+
+  //--------------------------------------------------------------------
+  // Body Task
+  //--------------------------------------------------------------------
+  task body();
+    repeat (10) begin
+      // Create transaction
+      trans = APB_TRANS::type_id::create("trans");
+
+      `uvm_info(get_type_name(), "Task Body Called", UVM_LOW)
+
+      // Start transaction
+      start_item(trans);
+
+      // Randomize transaction
+      if (!trans.randomize())
+        `uvm_fatal(get_type_name(), "Randomization Failure")
+
+      // Finish transaction (must always be called after start_item)
+      finish_item(trans);
+
+      trans.print();
+    end
+  endtask
+
+endclass
+
+//======================================================================
+// End of File
+//======================================================================
