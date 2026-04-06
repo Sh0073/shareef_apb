@@ -91,7 +91,6 @@ Comparison
 ### Tools:
 
 * Cadence Xcelium
-* QuestaSim
 * Synopsys VCS
 * EDA Playground
 
