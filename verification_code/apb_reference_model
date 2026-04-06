@@ -1,0 +1,79 @@
+//======================================================================
+// File: APB_reference.sv
+// Description: APB Reference Model for Scoreboard Comparison
+// Author: Kittu K Patel
+//======================================================================
+
+class APB_reference extends uvm_component;
+
+  `uvm_component_utils(APB_reference)
+
+  // Receives transactions from monitor
+  uvm_analysis_imp #(APB_TRANS, APB_reference) ap_port;
+
+  // Sends golden transactions to scoreboard
+  uvm_blocking_put_port #(APB_TRANS) put_port;
+
+  // Reference memory model (acts like DUT memory)
+  bit [`DATA_WIDTH-1:0] mem[int];  
+
+  //--------------------------------------------------------------------
+  // Constructor
+  //--------------------------------------------------------------------
+  function new(string name="APB_reference", uvm_component parent);
+    super.new(name, parent);
+    ap_port   = new("ap_port", this);
+    put_port  = new("put_port", this);
+  endfunction
+
+  //--------------------------------------------------------------------
+  // Write method: called by analysis imp
+  //--------------------------------------------------------------------
+  function void write(APB_TRANS trans);
+
+    APB_TRANS ref_trans;
+    ref_trans = APB_TRANS::type_id::create("ref_trans");
+  //  ref_trans.copy(trans);
+
+    if (trans.PWRITE) begin
+      // -----------------------------
+      // WRITE transaction: update memory
+      // -----------------------------
+      mem[trans.PADDR] = trans.PWDATA;
+
+      `uvm_info(get_type_name(),
+        $sformatf("Reference Model WRITE stored: ADDR=0x%0h DATA=0x%0h",
+                  trans.PADDR, trans.PWDATA),
+        UVM_MEDIUM)
+
+    end else begin
+      // -----------------------------
+      // READ transaction: generate expected PRDATA
+      // -----------------------------
+      if (mem.exists(trans.PADDR))
+        ref_trans.PRDATA = mem[trans.PADDR];
+      else
+        ref_trans.PRDATA = '0;
+
+      `uvm_info(get_type_name(),
+        $sformatf("Reference Model READ expected: ADDR=0x%0h DATA=0x%0h",
+                  trans.PADDR, ref_trans.PRDATA),
+        UVM_MEDIUM)
+
+      // -----------------------------
+      // Since put_port.put() is blocking,
+      // call it asynchronously
+      // -----------------------------
+      fork
+        automatic APB_TRANS tmp = ref_trans;
+        put_port.put(tmp);
+      join_none
+    end
+
+  endfunction
+
+endclass
+
+//======================================================================
+// End of File
+//======================================================================
