@@ -1,0 +1,107 @@
+class APB_TEST extends uvm_test;
+  `uvm_component_utils(APB_TEST)
+  APB_ENV env;
+  APB_SEQUENCE sequences;
+  function new(string name="APB_TEST",uvm_component parent);
+    super.new(name,parent);
+  endfunction
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    env=APB_ENV::type_id::create("env",this);
+    sequences=APB_SEQUENCE::type_id::create("sequences",this);
+  endfunction
+  task run_phase(uvm_phase phase);
+    super.run_phase(phase);
+    phase.raise_objection(this);
+    sequences.start(env.agent.sequencer);
+    phase.drop_objection(this);
+  endtask
+endclass
+
+
+`define ADDR_WIDTH 8
+`define DATA_WIDTH 8
+
+
+//======================================================================
+// File: tb.sv
+// Description: UVM Testbench for APB Slave Verification
+// Author: Kittu K Patel
+//======================================================================
+
+`include "uvm_macros.svh"    // UVM macros
+`include "APB_PKG.sv"        // APB package
+
+import uvm_pkg::*;           // Import UVM package
+import pkg::*;               // Import user-defined package (APB environment)
+
+//---------------------------------------------------------------------
+// Top-level Testbench Module
+//---------------------------------------------------------------------
+module tb;
+
+  // Clock & Reset
+  bit PCLK;
+  bit PRESETn;
+
+  // Instantiate Interface (driven by testbench and connected to DUT)
+  intf inf(PCLK);
+
+  //-------------------------------------------------------------------
+  // Clock Generation
+  //-------------------------------------------------------------------
+  initial begin
+    PCLK = 0;
+    forever #5 PCLK = ~PCLK;   // Generate 100MHz clock (10ns period)
+  end
+
+  //-------------------------------------------------------------------
+  // Reset Generation
+  //-------------------------------------------------------------------
+  initial begin
+    PRESETn=1'b0;
+    #20;
+     PRESETn = 1'b1;           // Release reset after 20ns
+  end
+
+  //-------------------------------------------------------------------
+  // DUT Instantiation
+  //-------------------------------------------------------------------
+  apb_slave dut (
+    .PCLK    (inf.PCLK),
+    .PRESETn (inf.PRESETn),
+    .PSEL    (inf.PSEL),
+    .PENABLE (inf.PENABLE),
+    .PWRITE  (inf.PWRITE),
+    .PADDR   (inf.PADDR),
+    .PWDATA  (inf.PWDATA),
+    .PRDATA  (inf.PRDATA),
+    .PSLVERR (inf.PSLVERR),
+    .PREADY  (inf.PREADY)
+  );
+
+  //-------------------------------------------------------------------
+  // UVM Configuration Setup
+  //-------------------------------------------------------------------
+  initial begin
+    // Pass virtual interface to UVM components
+    uvm_config_db#(virtual intf)::set(null, "*", "inf", inf);
+  end
+
+  //-------------------------------------------------------------------
+  // Dumping Waveforms
+  //-------------------------------------------------------------------
+  initial begin
+    $dumpfile("dump.vcd");
+    $dumpvars(0, tb);
+  end
+  
+  initial begin
+    run_test("APB_TEST");
+  end
+
+endmodule
+
+//======================================================================
+// End of File
+//======================================================================
